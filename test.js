@@ -4,7 +4,7 @@ var enamdict = require("./enamdict");
 
 var start = (new Date).getTime();
 
-enamdict.init("enamdict.trim.utf-8.gz", function() {
+enamdict.init(function() {
     var diff = (new Date).getTime() - start;
     //var data = enamdict.getData();
     //var keys = Object.keys(data);

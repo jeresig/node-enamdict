@@ -22,6 +22,11 @@ var byRomaji = {};
 
 module.exports = {
     init: function(stream, callback) {
+        if (arguments.length === 1) {
+            callback = stream;
+            stream = "enamdict.gz";
+        }
+
         // If a stream is specified then we assume that we're dealing
         // with a gzip'd file of the ENAMDICT database
         if (typeof stream === "string") {
