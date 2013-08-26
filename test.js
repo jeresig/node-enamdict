@@ -22,3 +22,9 @@ enamdict.init(function() {
 });
 
 // enamdict.lookupKanji("安藤")
+
+// To Test:
+// Andoo Hiroshige
+// Hiroshige Andoo
+// Utagawa Hiroshige
+// Hiroshige Utagawa

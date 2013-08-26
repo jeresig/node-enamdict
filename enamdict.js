@@ -7,6 +7,9 @@ var fs = require("fs");
 var zlib = require("zlib");
 var concat = require("concat-stream");
 
+// Default location of the included enamdict file
+var enamdictFile = __dirname + "/enamdict.gz";
+
 // Parse a line in the enamdict.
 // Only parse lines that are of type: sugfm
 // (surname, unknown, given, female given, male given)
@@ -19,12 +22,13 @@ var byRomaji = {};
 
 // TODO: Need to add a simplified lookup where all long vowels are reduced
 // Use it as a backup when nothing else is found
+var backupRomaji = [];
 
 module.exports = {
     init: function(stream, callback) {
-        if (arguments.length === 1) {
+        if (arguments.length < 2) {
             callback = stream;
-            stream = "enamdict.gz";
+            stream = enamdictFile;
         }
 
         // If a stream is specified then we assume that we're dealing
@@ -35,7 +39,10 @@ module.exports = {
         }
 
         stream.pipe(concat(parseData));
-        stream.on("end", callback);
+
+        if (callback) {
+            stream.on("end", callback);
+        }
     },
 
     find: function(romaji) {
@@ -51,6 +58,14 @@ module.exports = {
         var parts = romaji.split(/\s+/);
         var surname = parts[0];
         var given = parts[1];
+
+        // Handle the case where there's a single name.
+        // Assume that the single name is the given name.
+        // (This is pretty common, an artist going by only their given name.)
+        if (parts.length === 1) {
+            given = parts[0];
+            surname = "";
+        }
 
         var surnameEntries = this.find(surname);
         var givenEntries = this.find(given);
@@ -119,13 +134,23 @@ RomajiName.prototype = {
     },
 
     romaji: function() {
-        return this.surname().romaji() + " " +
-            this.given().romaji();
+        var surname = this.surname().romaji();
+
+        if (surname) {
+            return surname + " " + this.given().romaji();
+        }
+
+        return "";
     },
 
     romajiModern: function() {
-        return this.given().romaji() + " " +
-            this.surname().romaji();
+        var surname = this.surname().romaji();
+
+        if (surname) {
+            return this.given().romaji() + " " + surname;
+        }
+
+        return "";
     },
 
     katakana: function() {
@@ -135,6 +160,8 @@ RomajiName.prototype = {
         if (givenKata && surnameKata) {
             return surnameKata + givenKata;
         }
+
+        return "";
     },
 
     kanji: function() {
@@ -190,7 +217,10 @@ Entries.prototype = {
 };
 
 var capitalize = function(name) {
-    return name[0].toUpperCase() + name.slice(1);
+    if (name) {
+        return name[0].toUpperCase() + name.slice(1);
+    }
+    return "";
 };
 
 var findPopular = function(entries, key, _default) {
@@ -198,15 +228,17 @@ var findPopular = function(entries, key, _default) {
     var total = 0;
 
     entries.forEach(function(entry) {
-        values[entry[key]] = (values[entry[key]] || 0) + 1;
-        total += 1;
+        if (key in entry) {
+            values[entry[key]] = (values[entry[key]] || 0) + 1;
+            total += 1;
+        }
     });
 
     var popular = Object.keys(values).sort(function(a, b) {
         return values[b] - values[a];
     });
 
-    if (values[popular[0]] > total / 2) {
+    if (popular.length > 0 && values[popular[0]] > total / 2) {
         return popular[0];
     }
 
@@ -220,6 +252,17 @@ var parseData = function(data) {
     while ((match = lineRegex.exec(data))) {
         parseLine.apply(this, match);
     }
+
+    backupRomaji.forEach(function(romaji) {
+        var newName = romaji.replace(/aa|ee|ii|oo|uu|'/g, function(all) {
+            return all === "'"? "" : all[0];
+        });
+
+        if (!(newName in byRomaji) ||
+                byRomaji[romaji].length >= byRomaji[newName].length) {
+            byRomaji[newName] = byRomaji[romaji];
+        }
+    });
 };
 
 var parseLine = function(line, kanji, katakana, romaji, type) {
@@ -253,6 +296,10 @@ var parseLine = function(line, kanji, katakana, romaji, type) {
     // Stuff into a hash for a fast lookup
     if (!byRomaji[romaji]) {
         byRomaji[romaji] = [data];
+
+        if (/aa|ee|ii|oo|uu|'/.test(romaji)) {
+            backupRomaji.push(romaji);
+        }
     } else {
         byRomaji[romaji].push(data);
     }
