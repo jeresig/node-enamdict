@@ -1,6 +1,6 @@
 {
   "name": "enamdict",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Look up Romaji names and correct surname/given name usage.",
   "main": "enamdict.js",
   "scripts": {
