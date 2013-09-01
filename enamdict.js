@@ -25,6 +25,8 @@ var byRomaji = {};
 var backupRomaji = [];
 
 module.exports = {
+    byRomaji: byRomaji,
+
     init: function(stream, callback) {
         if (arguments.length < 2) {
             callback = stream;
@@ -153,12 +155,12 @@ RomajiName.prototype = {
         return "";
     },
 
-    katakana: function() {
-        var givenKata = this.given().katakana();
-        var surnameKata = this.surname().katakana();
+    kana: function() {
+        var givenKana = this.given().kana();
+        var surnameKana = this.surname().kana();
 
-        if (givenKata && surnameKata) {
-            return surnameKata + givenKata;
+        if (givenKana && surnameKana) {
+            return surnameKana + givenKana;
         }
 
         return "";
@@ -189,8 +191,8 @@ Entries.prototype = {
         return findPopular(this.data, "type", "unknown");
     },
 
-    katakana: function() {
-        return findPopular(this.data, "katakana", "");
+    kana: function() {
+        return findPopular(this.data, "kana", "");
     },
 
     romaji: function() {
@@ -265,7 +267,7 @@ var parseData = function(data) {
     });
 };
 
-var parseLine = function(line, kanji, katakana, romaji, type) {
+var parseLine = function(line, kanji, kana, romaji, type) {
     // Trim off extraneous information
     romaji = romaji
         .toLowerCase()
@@ -289,7 +291,7 @@ var parseLine = function(line, kanji, katakana, romaji, type) {
     var data = {
         romaji: romaji,
         kanji: kanji,
-        katakana: katakana,
+        kana: kana,
         type: type
     };
 
