@@ -20,13 +20,11 @@ var lineRegex = /^([^ ]+) \[([^\]]+)\] \/(.*?) \([^\)]*?\b([ugfms])\b[^\)]*?\).*
 // Data cache
 var byRomaji = {};
 
-// TODO: Need to add a simplified lookup where all long vowels are reduced
+// A simplified lookup where all long vowels are reduced
 // Use it as a backup when nothing else is found
 var backupRomaji = [];
 
 module.exports = {
-    byRomaji: byRomaji,
-
     init: function(stream, callback) {
         if (arguments.length < 2) {
             callback = stream;
@@ -49,7 +47,6 @@ module.exports = {
 
     find: function(romaji) {
         romaji = romaji.toLowerCase();
-        // TODO: Clean up accents, convert to oo, etc.?
 
         if (romaji in byRomaji) {
             return new Entries(byRomaji[romaji]);
