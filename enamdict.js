@@ -1,5 +1,5 @@
 /**
- * ENAMDICT Romaji Lookup Utility
+ * ENAMDICT Lookup Utility
  *   By John Resig http://ejohn.org/
  *   Released under an MIT License.
  */
@@ -11,22 +11,32 @@ var concat = require("concat-stream");
 var enamdictFile = __dirname + "/enamdict.gz";
 
 // Parse a line in the enamdict.
+var lineRegex = /^([^ ]+) \[([^\]]+)\] \/(.*?)\//;
+
+// Used for extracting the type from a line
+var typeEntryRegex = /\(([spugfmhrct,]+)\)/;
+
 // Only parse lines that are of type: sugfm
 // (surname, unknown, given, female given, male given)
-var lineRegex = /^([^ ]+) \[([^\]]+)\] \/(.*?) \([^\)]*?\b([ugfms])\b[^\)]*?\).*$/gm;
+var typeRegex = /\b([sugfm])\b/;
 
-// TODO: Improve ugfms regex to work at both the start and end of the name field
+// Map of common types to expanded form
+var types = {
+    s: "surname",
+    m: "given",
+    f: "given",
+    g: "given"
+};
 
-// Data cache
-var byRomaji = {};
-
-// A simplified lookup where all long vowels are reduced
-// Use it as a backup when nothing else is found
-var backupRomaji = [];
+// Where we store the string form of the dictionary
+var enamdictData = "";
 
 module.exports = {
     init: function(stream, callback) {
-        if (arguments.length < 2) {
+        var self = this;
+
+        // Swap the arguments if the stream is left off
+        if (!stream || typeof stream === "function") {
             callback = stream;
             stream = enamdictFile;
         }
@@ -34,153 +44,59 @@ module.exports = {
         // If a stream is specified then we assume that we're dealing
         // with a gzip'd file of the ENAMDICT database
         if (typeof stream === "string") {
-            stream = fs.createReadStream(stream)
-                .pipe(zlib.createGunzip());
+            stream = fs.createReadStream(stream).pipe(zlib.createGunzip());
         }
 
-        stream.pipe(concat(parseData));
+        // Convert the file into one giant string to search through later
+        stream.pipe(concat(function(data) {
+            enamdictData = data.toString();
+        }));
 
-        if (callback) {
-            stream.on("end", callback);
-        }
+        stream.on("end", function() {
+            if (callback) {
+                callback(null, self);
+            }
+        });
+
+        return stream;
     },
 
     find: function(romaji) {
-        romaji = romaji.toLowerCase();
-
-        if (romaji in byRomaji) {
-            return new Entries(byRomaji[romaji]);
+        if (!romaji) {
+            return null;
         }
+
+        // Build Regex
+        romaji = romaji
+            // ENAMDICT uses ou for a long o by default
+            .replace(/oo/g, "ou")
+            // We're going to look for both the regular and
+            // long form of the vowels
+            .replace(/([aeiu])/gi, "$1$1?")
+            .replace(/o/gi, "o[ou]?")
+            // We're also going to look for cases where n' could be used
+            .replace(/n/g, "n'?");
+
+        // Build the regex
+        var regex = new RegExp("^.*?/" + romaji + " .*?$", "igm");
+
+        // Run the search
+        return searchData(regex, "romaji");
     },
 
-    findByName: function(romaji) {
-        var parts = romaji.split(/\s+/);
-        var surname = parts[0];
-        var given = parts[1];
-
-        // Handle the case where there's a single name.
-        // Assume that the single name is the given name.
-        // (This is pretty common, an artist going by only their given name.)
-        if (parts.length === 1) {
-            given = parts[0];
-            surname = "";
+    findKanji: function(kanji) {
+        if (!kanji) {
+            return null;
         }
 
-        var surnameEntries = this.find(surname);
-        var givenEntries = this.find(given);
-
-        if (!givenEntries && !surnameEntries) {
-            return;
-        }
-
-        // Fix cases where only one of the two names was found
-        if (!givenEntries || !surnameEntries) {
-            if (givenEntries) {
-                var tmp = surnameEntries = new Entries([{
-                    romaji: surname,
-                    type: "unknown"
-                }]);
-
-                // Swap the names if they're in the wrong place
-                if (givenEntries.type() === "surname") {
-                    surnameEntries = givenEntries;
-                    givenEntries = tmp;
-                }
-
-            } else {
-                var tmp = givenEntries = new Entries([{
-                    romaji: given,
-                    type: "unknown"
-                }]);
-
-                // Swap the names if they're in the wrong place
-                if (surnameEntries.type() === "given") {
-                    givenEntries = surnameEntries;
-                    surnameEntries = tmp;
-                }
-            }
-        } else {
-            // Fix the case where they names are reversed
-            if ((surnameEntries.type() === "given" ||
-                givenEntries.type() === "surname") &&
-                surnameEntries.type() !== givenEntries.type()) {
-                    var tmp = surnameEntries;
-                    surnameEntries = givenEntries;
-                    givenEntries = tmp;
-            }
-        }
-
-        return new RomajiName(surnameEntries, givenEntries);
+        // Build the regex and run the search
+        return searchData(new RegExp("^" + kanji + ".*$", "gm"), "kanji");
     }
 };
 
-var RomajiName = function(surname, given) {
-    this._surname = surname;
-    this._given = given;
-};
-
-RomajiName.prototype = {
-    surname: function() {
-        return this._surname;
-    },
-
-    given: function() {
-        return this._given;
-    },
-
-    toString: function() {
-        return this.romaji();
-    },
-
-    romaji: function() {
-        var surname = this.surname().romaji();
-
-        if (surname) {
-            return surname + " " + this.given().romaji();
-        }
-
-        return "";
-    },
-
-    romajiModern: function() {
-        var surname = this.surname().romaji();
-
-        if (surname) {
-            return this.given().romaji() + " " + surname;
-        }
-
-        return "";
-    },
-
-    kana: function() {
-        var givenKana = this.given().kana();
-        var surnameKana = this.surname().kana();
-
-        if (givenKana && surnameKana) {
-            return surnameKana + givenKana;
-        }
-
-        return "";
-    },
-
-    kanji: function() {
-        var givenKanji = this.given().kanji();
-        var surnameKanji = this.surname().kanji();
-
-        var kanjis = [];
-
-        surnameKanji.forEach(function(surname) {
-            givenKanji.forEach(function(given) {
-                kanjis.push(surname + given);
-            })
-        });
-
-        return kanjis;
-    }
-};
-
-var Entries = function(data) {
+var Entries = function(data, key) {
     this.data = data;
+    this.key = key;
 };
 
 Entries.prototype = {
@@ -189,25 +105,27 @@ Entries.prototype = {
     },
 
     kana: function() {
-        return findPopular(this.data, "kana", "");
+        if (this.key === "romaji") {
+            return findPopular(this.data, "kana", "");
+        } else {
+            return aggregate(this.data, this.type(), "kana");
+        }
     },
 
     romaji: function() {
-        return capitalize(findPopular(this.data, "romaji", ""));
+        if (this.key === "romaji") {
+            return capitalize(findPopular(this.data, "romaji", ""));
+        } else {
+            return aggregate(this.data, this.type(), "romaji");
+        }
     },
 
     kanji: function() {
-        var type = this.type();
-
-        return this.data.map(function(entry) {
-            if (type === "unknown" ||
-                entry.type === type ||
-                entry.type === "unknown") {
-                    return entry.kanji;
-            }
-        }).filter(function(kanji) {
-            return !!kanji;
-        });
+        if (this.key === "kanji") {
+            return findPopular(this.data, "kanji", "");
+        } else {
+            return aggregate(this.data, this.type(), "kanji");
+        }
     },
 
     entries: function() {
@@ -220,6 +138,18 @@ var capitalize = function(name) {
         return name[0].toUpperCase() + name.slice(1);
     }
     return "";
+};
+
+var aggregate = function(entries, type, key) {
+    return entries.map(function(entry) {
+        if (type === "unknown" ||
+            entry.type === type ||
+            entry.type === "unknown") {
+                return entry[key];
+        }
+    }).filter(function(name) {
+        return !!name;
+    });
 };
 
 var findPopular = function(entries, key, _default) {
@@ -244,62 +174,62 @@ var findPopular = function(entries, key, _default) {
     return _default;
 };
 
-var parseData = function(data) {
-    data = data.toString();
+var searchData = function(regex, key) {
+    // Data cache
+    var nameLookup = {};
 
     var match;
-    while ((match = lineRegex.exec(data))) {
-        parseLine.apply(this, match);
+    while ((match = regex.exec(enamdictData))) {
+        var line = match[0];
+        if ((match = lineRegex.exec(line))) {
+            var data = parseLine.apply(this, match);
+
+            if (data) {
+                var dataKey = data[key];
+
+                if (!nameLookup[dataKey]) {
+                    nameLookup[dataKey] = [data];
+                } else {
+                    nameLookup[dataKey].push(data);
+                }
+            }
+        }
     }
 
-    backupRomaji.forEach(function(romaji) {
-        var newName = romaji.replace(/aa|ee|ii|oo|uu|'/g, function(all) {
-            return all === "'"? "" : all[0];
-        });
+    // Find the most popular variation of the name
+    var popularName = Object.keys(nameLookup).sort(function(a, b) {
+        return nameLookup[b].length - nameLookup[a].length;
+    })[0];
 
-        if (!(newName in byRomaji) ||
-                byRomaji[romaji].length >= byRomaji[newName].length) {
-            byRomaji[newName] = byRomaji[romaji];
-        }
-    });
+    return popularName ?
+        new Entries(nameLookup[popularName], key) :
+        null;
 };
 
-var parseLine = function(line, kanji, kana, romaji, type) {
-    // Trim off extraneous information
-    romaji = romaji
-        .toLowerCase()
-        // Sometimes extra information is provided in quotes
-        // Or after a comma
-        .replace(/\s*\(.*?\)|,.*$/g, "")
-        // For whatever reason sometimes ou is used instead of oo
-        .replace("ou", "oo");
-
-    // Figure out what type of name we're dealing with
-    if (/[gfm]/.test(type)) {
-        // TODO: Provide information on possible gender of name?
-        type = "given";
-    } else if (type.indexOf("s") >= 0) {
-        type = "surname";
-    } else {
-        type = "unknown";
+var parseLine = function(line, kanji, kana, name) {
+    // Make sure it has a type entry
+    if (!typeEntryRegex.test(name)) {
+        return;
     }
 
+    // Make sure it actually has a type we care about
+    if (!typeRegex.test(RegExp.$1)) {
+        return;
+    }
+
+    // Store the type for later
+    // TODO: Provide information on possible gender of name?
+    var type = types[RegExp.$1] || "unknown";
+
+    // Trim off extraneous information
+    // Sometimes extra information is provided in quotes or after a comma
+    var romaji = name.replace(/\s*\(.*?\)|,.*$/g, "");
+
     // Build an object of the data that we've extracted
-    var data = {
+    return {
         romaji: romaji,
         kanji: kanji,
         kana: kana,
         type: type
     };
-
-    // Stuff into a hash for a fast lookup
-    if (!byRomaji[romaji]) {
-        byRomaji[romaji] = [data];
-
-        if (/aa|ee|ii|oo|uu|'/.test(romaji)) {
-            backupRomaji.push(romaji);
-        }
-    } else {
-        byRomaji[romaji].push(data);
-    }
 };

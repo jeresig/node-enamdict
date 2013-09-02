@@ -17,7 +17,7 @@ enamdict.init(function() {
     //console.log("sharaku", enamdict.lookup("sharaku"));
     //console.log("tooshuusai", enamdict.lookup("tooshuusai").type());
     //console.log(keys.length);
-    console.log(enamdict.findByName("andoo hiroshige").kana());
+    console.log(enamdict.find("andou").data);
     console.log(diff);
 });
 
