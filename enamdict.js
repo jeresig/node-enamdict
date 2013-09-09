@@ -7,11 +7,14 @@ var fs = require("fs");
 var zlib = require("zlib");
 var concat = require("concat-stream");
 
-// Default location of the included enamdict file
-var enamdictFile = __dirname + "/enamdict.gz";
-
 // Parse a line in the enamdict.
-var lineRegex = /^([^ ]+) \[([^\]]+)\] \/(.*?)\//;
+var lineRegex = /^([^ ]+) \[([^\]]+)\] \/(.*?)\//gm;
+
+// Parse a line in the modified enamdict.
+var modifiedLineRegex = /^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)$/gm;
+
+// Used for simplifying the romaji name to find close duplicates
+var cleanRegex = /aa|ee|ii|oo|uu|ou|'/ig;
 
 // Used for extracting the type from a line
 var typeEntryRegex = /\(([spugfmhrct,]+)\)/;
@@ -31,14 +34,18 @@ var types = {
 // Where we store the string form of the dictionary
 var enamdictData = "";
 
-module.exports = {
-    init: function(stream, callback) {
-        var self = this;
+// The indexed positions of the names in the dictionary
+var dataIndex;
 
+module.exports = {
+    // Default location of the included enamdict file
+    enamdictFile: __dirname + "/enamdict.gz",
+
+    init: function(stream, callback) {
         // Swap the arguments if the stream is left off
         if (!stream || typeof stream === "function") {
             callback = stream;
-            stream = enamdictFile;
+            stream = this.enamdictFile;
         }
 
         // If a stream is specified then we assume that we're dealing
@@ -47,18 +54,78 @@ module.exports = {
             stream = fs.createReadStream(stream).pipe(zlib.createGunzip());
         }
 
-        // Convert the file into one giant string to search through later
-        stream.pipe(concat(function(data) {
-            enamdictData = data.toString();
-        }));
+        callback = callback || function(){};
 
-        stream.on("end", function() {
-            if (callback) {
-                callback(null, self);
-            }
-        });
+        if (Buffer.isBuffer(stream)) {
+            // Convert the buffer into a string
+            enamdictData = stream.toString();
+
+            callback(null, this);
+
+        } else {
+            // Convert the file into one giant string to search through later
+            stream.pipe(concat(function(data) {
+                enamdictData = data.toString();
+            }));
+
+            stream.on("end", function() {
+                this.index(callback);
+            }.bind(this));
+        }
 
         return stream;
+    },
+
+    process: function(callback) {
+        var data = [];
+
+        var match;
+        while ((match = lineRegex.exec(enamdictData))) {
+            var result = parseLine.apply(this, match);
+
+            if (result) {
+                data.push([
+                    cleanName(result.romaji),
+                    result.romaji,
+                    result.kanji,
+                    result.kana,
+                    result.type
+                ].join("|"));
+            }
+        }
+
+        data = data.sort().join("\n");
+
+        // Doesn't need to be a callback, but would rather be safe
+        callback(null, data);
+    },
+
+    /**
+     * Build an index to improve name lookup performance.
+     */
+    index: function(callback) {
+        dataIndex = {};
+
+        var pos = 0;
+
+        enamdictData.split("\n").forEach(function(line) {
+            var parts = line.split("|");
+            var cleanName = parts[0];
+            var romaji = parts[1];
+
+            if (!(cleanName in dataIndex)) {
+                dataIndex[cleanName] = pos;
+            }
+
+            if (!(romaji in dataIndex)) {
+                dataIndex[romaji] = pos;
+            }
+
+            // +1 for the \n
+            pos += line.length + 1;
+        });
+
+        callback(null, this);
     },
 
     find: function(romaji) {
@@ -69,7 +136,9 @@ module.exports = {
         // Build Regex
         romaji = romaji
             // ENAMDICT uses ou for a long o by default
-            .replace(/oo/g, "ou")
+            .replace(/oo/g, "ou");
+
+        var romajiRegex = romaji
             // We're going to look for both the regular and
             // long form of the vowels
             .replace(/([aeiu])/gi, "$1$1?")
@@ -78,10 +147,17 @@ module.exports = {
             .replace(/n/g, "n'?");
 
         // Build the regex
-        var regex = new RegExp("^.*?/" + romaji + " .*?$", "igm");
+        romajiRegex = new RegExp(romajiRegex, "i");
+
+        var useIndex = false;
+
+        if (dataIndex && romaji in dataIndex) {
+            modifiedLineRegex.lastIndex = dataIndex[romaji];
+            useIndex = true;
+        }
 
         // Run the search
-        return searchData(regex, "romaji");
+        return searchData(romajiRegex, "romaji", useIndex);
     },
 
     findKanji: function(kanji) {
@@ -90,7 +166,7 @@ module.exports = {
         }
 
         // Build the regex and run the search
-        return searchData(new RegExp("^" + kanji + ".*$", "gm"), "kanji");
+        return searchData(new RegExp(kanji), "kanji");
     }
 };
 
@@ -174,25 +250,39 @@ var findPopular = function(entries, key, _default) {
     return _default;
 };
 
-var searchData = function(regex, key) {
+var cleanName = function(name) {
+    return name.replace(cleanRegex, function(all) {
+        return all[0] === "'" ? "" : all[0];
+    });
+};
+
+var searchData = function(regex, key, useIndex) {
     // Data cache
     var nameLookup = {};
 
     var match;
-    while ((match = regex.exec(enamdictData))) {
-        var line = match[0];
-        if ((match = lineRegex.exec(line))) {
-            var data = parseLine.apply(this, match);
+    while ((match = modifiedLineRegex.exec(enamdictData))) {
+        var data = {
+            romaji: match[2],
+            kanji: match[3],
+            kana: match[4],
+            type: match[5]
+        };
 
-            if (data) {
-                var dataKey = data[key];
+        var dataKey = data[key];
 
-                if (!nameLookup[dataKey]) {
-                    nameLookup[dataKey] = [data];
-                } else {
-                    nameLookup[dataKey].push(data);
-                }
+        if (!regex.test(dataKey)) {
+            if (useIndex) {
+                break;
+            } else {
+                continue;
             }
+        }
+
+        if (!nameLookup[dataKey]) {
+            nameLookup[dataKey] = [data];
+        } else {
+            nameLookup[dataKey].push(data);
         }
     }
 
@@ -223,7 +313,12 @@ var parseLine = function(line, kanji, kana, name) {
 
     // Trim off extraneous information
     // Sometimes extra information is provided in quotes or after a comma
-    var romaji = name.replace(/\s*\(.*?\)|,.*$/g, "");
+    var romaji = name.replace(/\s*\(.*?\)|,.*$/g, "").trim();
+
+    // We don't want to get any names with whitespace or dashes in them
+    if (/[\s-]/.test(romaji)) {
+        return;
+    }
 
     // Build an object of the data that we've extracted
     return {

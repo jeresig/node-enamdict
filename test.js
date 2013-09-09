@@ -1,6 +1,4 @@
-var fs = require("fs");
 var enamdict = require("./enamdict");
-// enamdict.init("enamdict.utf-8", function() { console.log("DONE"); });
 
 var start = (new Date).getTime();
 

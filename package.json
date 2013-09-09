@@ -5,7 +5,7 @@
   "main": "enamdict.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "curl http://ftp.monash.edu.au/pub/nihongo/enamdict.gz | gzip -d - | iconv -f EUC-JP -t UTF-8 | gzip - > enamdict.gz"
+    "install": "node download-enamdict.js"
   },
   "repository": {
     "type": "git",
@@ -24,6 +24,8 @@
     "url": "https://github.com/jeresig/node-enamdict/issues"
   },
   "dependencies": {
-    "concat-stream": "~1.0.1"
+    "concat-stream": "~1.0.1",
+    "request": "~2.27.0",
+    "iconv": "~2.0.7"
   }
 }
