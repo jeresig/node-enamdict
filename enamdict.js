@@ -134,7 +134,7 @@ module.exports = {
         }
 
         // Build Regex
-        romaji = romaji
+        romaji = romaji.toLowerCase()
             // ENAMDICT uses ou for a long o by default
             .replace(/oo/g, "ou");
 
@@ -322,7 +322,7 @@ var parseLine = function(line, kanji, kana, name) {
 
     // Build an object of the data that we've extracted
     return {
-        romaji: romaji,
+        romaji: romaji.toLowerCase(),
         kanji: kanji,
         kana: kana,
         type: type
