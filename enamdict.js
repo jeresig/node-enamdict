@@ -147,7 +147,7 @@ module.exports = {
             .replace(/n/g, "n'?");
 
         // Build the regex
-        romajiRegex = new RegExp(romajiRegex, "i");
+        romajiRegex = new RegExp("^" + romajiRegex + "$", "i");
 
         var useIndex = false;
 
