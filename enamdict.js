@@ -14,7 +14,8 @@ var lineRegex = /^([^ ]+) \[([^\]]+)\] \/(.*?)\//gm;
 var modifiedLineRegex = /^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)$/gm;
 
 // Used for simplifying the romaji name to find close duplicates
-var cleanRegex = /aa|ee|ii|oo|uu|ou|'/ig;
+var cleanRegex = /aa|ee|ii|oo|uu|ou/ig;
+var cleanExtraRegex = /['-]/g;
 
 // Used for extracting the type from a line
 var typeEntryRegex = /\(([spugfmhrct,]+)\)/;
@@ -251,9 +252,11 @@ var findPopular = function(entries, key, _default) {
 };
 
 var cleanName = function(name) {
-    return name.replace(cleanRegex, function(all) {
-        return all[0] === "'" ? "" : all[0];
-    });
+    return name
+        .replace(cleanExtraRegex, "")
+        .replace(cleanRegex, function(all) {
+            return all[0];
+        });
 };
 
 var searchData = function(regex, key, useIndex) {
