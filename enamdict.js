@@ -62,7 +62,6 @@ module.exports = {
             enamdictData = stream.toString();
 
             callback(null, this);
-
         } else {
             // Convert the file into one giant string to search through later
             stream.pipe(concat(function(data) {
@@ -185,7 +184,7 @@ Entries.prototype = {
         if (this.key === "romaji") {
             return findPopular(this.data, "kana", "");
         } else {
-            return aggregate(this.data, this.type(), "kana");
+            return aggregate(this.data, "kana");
         }
     },
 
@@ -193,7 +192,7 @@ Entries.prototype = {
         if (this.key === "romaji") {
             return capitalize(findPopular(this.data, "romaji", ""));
         } else {
-            return aggregate(this.data, this.type(), "romaji");
+            return aggregate(this.data, "romaji");
         }
     },
 
@@ -201,7 +200,7 @@ Entries.prototype = {
         if (this.key === "kanji") {
             return findPopular(this.data, "kanji", "");
         } else {
-            return aggregate(this.data, this.type(), "kanji");
+            return aggregate(this.data, "kanji");
         }
     },
 
@@ -217,13 +216,9 @@ var capitalize = function(name) {
     return "";
 };
 
-var aggregate = function(entries, type, key) {
+var aggregate = function(entries, key) {
     return entries.map(function(entry) {
-        if (type === "unknown" ||
-            entry.type === type ||
-            entry.type === "unknown") {
-                return entry[key];
-        }
+        return entry[key];
     }).filter(function(name) {
         return !!name;
     });
