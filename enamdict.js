@@ -166,7 +166,7 @@ module.exports = {
         }
 
         // Build the regex and run the search
-        return searchData(new RegExp(kanji), "kanji");
+        return searchData(new RegExp("^" + kanji + "$"), "kanji");
     }
 };
 
