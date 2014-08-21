@@ -1,7 +1,7 @@
 {
   "name": "enamdict",
   "version": "0.1.0",
-  "description": "Look up Romaji names and correct surname/given name usage.",
+  "description": "Efficiently query ENAMDICT using Node.js.",
   "main": "enamdict.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

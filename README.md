@@ -37,9 +37,30 @@ This utility was created to correct artist names in the [`romaji-name`](https://
     Kanji: 曷川
     Type: surname
 
+## Installation
+
+This package can be installed by running:
+
+    npm install enamdict
+
+### ENAMDICT Pre-Processing
+
+When this package is installed a copy of ENAMDICT is downloaded from: (http://ftp.monash.edu.au/pub/nihongo/enamdict.gz)[http://ftp.monash.edu.au/pub/nihongo/enamdict.gz]. A couple optimizations are performed in order to speed up search time and to decrease the file size of the dictionary.
+
+* To start, ENAMDICT is converted from a EUC-JP encoding to the more-widely-used UTF-8 encoding.
+* All entries that aren't "surname", "given", "male" (given), "female" (given), or "unknown" are removed.
+* Extraneous non-name details are stripped from the entry (such as the years in which the individual lived).
+* All entries that aren't an individual name part are removed. (e.g. "hiroshige" is kept but "utagawa hiroshige" is removed)
+* Only the "romaji", "kana", "kanji", and "type" fields are preserved, everything else is removed.
+* All the entries are then sorted by their romaji name (to improve lookup performance).
+
+This is all placed into a new `enamdict.gz` file in the same directory as the `enamdict.js` script itself. For comparison the old ENAMDICT file is 7.2MB whereas the new one is only 2.8MB.
+
 ## Methods
 
 ### `.init(callback)`
+
+Asynchronously loads the previously-generated reduced ENAMDICT.
 
 ### `.find(romajiName)`
 
