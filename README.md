@@ -64,7 +64,11 @@ Asynchronously loads the previously-generated reduced ENAMDICT.
 
 ### `.find(romajiName)`
 
+Finds matching entries by Romaji name (English name). This is the default search mechanism, the search index is optimized for this particular method. Returns an `Entries` object.
+
 ### `.findKanji(kanjiName)`
+
+Finds matching entries by Kanji name (Japanese name). The search index is NOT optimized for this particular method and may be slow. Returns an `Entries` object.
 
 ## Models
 
@@ -74,17 +78,31 @@ The result object returned from the `.find()` and `.findKanji()` methods. Holds 
 
 #### `.entries()`
 
-Properties:
+Returns an array of objects representing matching entries. The objects have the following properties:
 
-* `romaji`:
-* `kana`:
-* `kanji`:
-* `type`:
+* `romaji`: A string holding an English ([Romaji](https://en.wikipedia.org/wiki/Romaji)) representation of a name.
+* `kana`: A string holding a [Kana](https://en.wikipedia.org/wiki/Kana) representation of a name.
+* `kanji`: A string holding a [Kanji](https://en.wikipedia.org/wiki/Kanji) representation of a name.
+* `type`: A string that represents the type of the name. Possible values are: `"surname"`, `"given"`, or `"unknown"`.
 
 #### `.type()`
 
-Returns: `"surname"`, `"given"`, or `"unknown"`.
+Returns the most popular type of the name, aggregated from all matching entries. For example if 5 entries were found, three of which were `"surname"`, 1 of which was `"given"`, and 1 of which was `"unknown"` then this method would return `"surname"`. Returns the same possible values as the `type` property itself.
 
 #### `.kana()`
+
+If a query was done with `.find()` then this will return a string representing the Kana reading of the name.
+
+If a query was done with `.findKanji()` then this will return an array of all the possible Kana readings of the Kanji.
+
 #### `.romaji()`
+
+If a query was done with `.find()` then this will return a string representing the Romaji reading of the name.
+
+If a query was done with `.findKanji()` then this will return an array of all the possible Kana readings of the Kanji.
+
 #### `.kanji()`
+
+If a query was done with `.find()` then this will return an array of all the possible Kanji versions of the name.
+
+If a query was done with `.findKanji()` then this will return a string representing the Kanji version of the name.
