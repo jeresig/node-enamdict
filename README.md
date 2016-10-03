@@ -45,7 +45,7 @@ This package can be installed by running:
 
 ### ENAMDICT Pre-Processing
 
-When this package is installed a copy of ENAMDICT is downloaded from (ftp.monash.edu.au)[http://ftp.monash.edu.au/pub/nihongo/enamdict.gz]. A couple optimizations are performed in order to speed up search time and to decrease the file size of the dictionary.
+When this package is installed a copy of ENAMDICT is downloaded from [ftp.monash.edu.au](http://ftp.monash.edu.au/pub/nihongo/enamdict.gz), if it doesn't already exist. A couple optimizations are performed in order to speed up search time and to decrease the file size of the dictionary.
 
 * To start, ENAMDICT is converted from a EUC-JP encoding to the more-widely-used UTF-8 encoding.
 * All entries that aren't "surname", "given", "male" (given), "female" (given), or "unknown" are removed.

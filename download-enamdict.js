@@ -12,6 +12,13 @@ var Iconv = require("iconv").Iconv;
 // The default URL where the enamdict file is located
 var enamdictURL = "http://ftp.monash.edu.au/pub/nihongo/enamdict.gz";
 
+try {
+    fs.statSync(enamdict.enamdictFile);
+    process.exit(0);
+} catch(e) {
+    // If it doesn't exist then we need to download the dict
+}
+
 console.log("Downloading ENAMDICT...");
 
 // Download the ENMADICT database
