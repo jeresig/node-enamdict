@@ -1,11 +1,11 @@
 {
   "name": "enamdict",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Efficiently query ENAMDICT using Node.js.",
   "main": "enamdict.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "node download-enamdict.js"
+    "update": "node download-enamdict.js | gzip > enamdict.gz"
   },
   "repository": {
     "type": "git",
@@ -24,8 +24,8 @@
     "url": "https://github.com/jeresig/node-enamdict/issues"
   },
   "dependencies": {
-    "concat-stream": "~1.5.2",
-    "iconv": "^2.1.11",
-    "request": "~2.75.0"
+    "concat-stream": "1.5.2",
+    "iconv": "2.2.1",
+    "request": "2.78.0"
   }
 }
