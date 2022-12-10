@@ -1,6 +1,6 @@
 {
   "name": "enamdict",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Efficiently query ENAMDICT using Node.js.",
   "main": "enamdict.js",
   "scripts": {
