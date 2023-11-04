@@ -10,7 +10,7 @@ var request = require("request");
 var Iconv = require("iconv").Iconv;
 
 // The default URL where the enamdict file is located
-var enamdictURL = "http://ftp.monash.edu.au/pub/nihongo/enamdict.gz";
+var enamdictURL = "http://ftp.edrdg.org/pub/Nihongo/enamdict.gz";
 
 // Download the ENMADICT database
 var stream = request(enamdictURL)

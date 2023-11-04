@@ -1,6 +1,6 @@
 {
   "name": "enamdict",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Efficiently query ENAMDICT using Node.js.",
   "main": "enamdict.js",
   "scripts": {
@@ -24,10 +24,10 @@
     "url": "https://github.com/jeresig/node-enamdict/issues"
   },
   "dependencies": {
-    "concat-stream": "1.5.2"
+    "concat-stream": "2.0.0"
   },
   "devDependencies": {
-    "iconv": "2.3.5",
-    "request": "2.78.0"
+    "iconv": "3.0.1",
+    "request": "2.88.2"
   }
 }
